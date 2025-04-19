@@ -1,0 +1,56 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+  }
+  
+  body {
+    background: url('./imagens/floresta-pixel.png') no-repeat center center fixed;
+    background-size: cover;
+  }
+  
+  canvas {
+    display: block;
+    margin: auto;
+    background-color: transparent;
+    width: 100vw;
+    height: 100vh;
+  }
+  
+  /* Botões mobile */
+  .mobile-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    display: grid;
+    grid-template-areas:
+      ". up ."
+      "left down right";
+    gap: 5px;
+    z-index: 10;
+  }
+  
+  #up {
+    grid-area: up;
+  }
+  #down {
+    grid-area: down;
+  }
+  #left {
+    grid-area: left;
+  }
+  #right {
+    grid-area: right;
+  }
+  
+  .mobile-controls button {
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    background: rgba(255, 255, 255, 0.6);
+    border: none;
+    border-radius: 10px;
+    backdrop-filter: blur(4px);
+  }
+  

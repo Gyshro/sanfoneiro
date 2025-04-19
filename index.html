@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gatinho na Floresta</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      padding: 0;
+      margin: 0;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      background: url('./floresta.png') no-repeat center center fixed;
+      background-size: contain;
+      background-color: black;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: transparent;
+      z-index: 1;
+    }
+
+    .controls {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      display: grid;
+      grid-template-columns: 60px 60px 60px;
+      grid-template-rows: 60px 60px 60px;
+      gap: 5px;
+      z-index: 2;
+      touch-action: none;
+    }
+
+    .btn {
+      background-color: rgba(255, 255, 255, 0.3);
+      border: 2px solid white;
+      border-radius: 10px;
+      font-size: 24px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+    }
+
+    .btn:active {
+      background-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .close-message {
+      position: fixed;
+      font-size: 20px;
+      background-color: rgba(255, 255, 255, 0.8);
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      text-align: center;
+      line-height: 36px;
+      cursor: pointer;
+      z-index: 4;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+  <button id="closeMessage" class="close-message hidden">✖</button>
+
+  <div class="controls" id="controls">
+    <div></div>
+    <div class="btn" id="up">⬆️</div>
+    <div></div>
+    <div class="btn" id="left">⬅️</div>
+    <div></div>
+    <div class="btn" id="right">➡️</div>
+    <div></div>
+    <div class="btn" id="down">⬇️</div>
+    <div></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const closeBtn = document.getElementById("closeMessage");
+    const controlsDiv = document.getElementById("controls");
+
+    const playerImg = new Image();
+    playerImg.src = "pngegg.png";
+
+    const letterImg = new Image();
+    letterImg.src = "cartinha.png";
+
+    const portalImg = new Image();
+    portalImg.src = "p1.gif";
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const player = {
+      x: 100,
+      y: 200,
+      width: 28,
+      height: 28,
+      speed: 3
+    };
+
+    const allLetters = [
+      {
+        x: window.innerWidth * 0.7,
+        y: window.innerHeight * 0.5,
+        width: 24,
+        height: 24,
+        message: "Oi, Cereja... parece que você tá perdida, né? Mas eu queria te constar que todo mundo se perde às vezes, até as pessoas mais singulares do mundo. E você? Não há como se perder. Pois todo lugar é um lugar onde você flora de uma maneira que nem mesmo você imagina."
+      },
+      {
+        x: window.innerWidth * 0.5,
+        y: window.innerHeight * 0.2,
+        width: 24,
+        height: 24,
+        message: "e agora veja você, numa floresta esquisita e sendo um gato mais estranho ainda... mas ei, você tá chegando em lugares que talvez você nunca antes imaginou! NOS ÚLTIMOS DIAS você tem sido alguém tão superior ao que você era ontem, sabia? e a cada dia que passa você sempre fica um pouco mais bonita e eu não digo só de aparência, eu digo principalmente no que você é."
+      },
+      {
+        x: window.innerWidth * 0.1,
+        y: window.innerHeight * 0.6,
+        width: 24,
+        height: 24,
+        message: "💌 ainda bem que você está por perto, porque senão como seria essa vida? sei lá... sei que a vida tem lá seus caminhos tortos, seus dias estranhos mas você chegou e foi tipo sol abrindo depois de um céu muito nublado... e eu só consigo pensar: ainda bem (referência cof)"
+      }
+    ];
+
+    let currentLetterIndex = 0;
+    let currentMessage = "";
+    let messageOpen = false;
+
+    const portal = {
+      x: window.innerWidth * 0.45,
+      y: window.innerHeight * 0.85,
+      width: 60,
+      height: 60,
+      visible: false
+    };
+
+    const keys = {};
+    document.addEventListener("keydown", (e) => {
+      keys[e.key] = true;
+    });
+    document.addEventListener("keyup", (e) => {
+      keys[e.key] = false;
+    });
+
+    const mobileControls = {
+      up: false,
+      down: false,
+      left: false,
+      right: false
+    };
+
+    const bindTouch = (id, direction) => {
+      const btn = document.getElementById(id);
+      btn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        mobileControls[direction] = true;
+      });
+      btn.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        mobileControls[direction] = false;
+      });
+    };
+
+    bindTouch("up", "up");
+    bindTouch("down", "down");
+    bindTouch("left", "left");
+    bindTouch("right", "right");
+
+    closeBtn.addEventListener("click", () => {
+      currentMessage = "";
+      messageOpen = false;
+      closeBtn.classList.add("hidden");
+      controlsDiv.classList.remove("hidden");
+    });
+
+    function checkCollision(a, b) {
+      return (
+        a.x < b.x + b.width &&
+        a.x + a.width > b.x &&
+        a.y < b.y + b.height &&
+        a.y + a.height > b.y
+      );
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (!messageOpen) {
+        if (keys["ArrowLeft"] || mobileControls.left) player.x -= player.speed;
+        if (keys["ArrowRight"] || mobileControls.right) player.x += player.speed;
+        if (keys["ArrowUp"] || mobileControls.up) player.y -= player.speed;
+        if (keys["ArrowDown"] || mobileControls.down) player.y += player.speed;
+      }
+
+      player.x = Math.max(0, Math.min(canvas.width - player.width, player.x));
+      player.y = Math.max(0, Math.min(canvas.height - player.height, player.y));
+
+      if (currentLetterIndex < allLetters.length) {
+        const letter = allLetters[currentLetterIndex];
+        ctx.drawImage(letterImg, letter.x, letter.y, letter.width, letter.height);
+        if (!messageOpen && checkCollision(player, letter)) {
+          currentMessage = letter.message;
+          currentLetterIndex++;
+          messageOpen = true;
+          closeBtn.classList.remove("hidden");
+          controlsDiv.classList.add("hidden");
+        }
+      }
+
+      ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+      if (currentMessage) {
+        const padding = 20;
+        const boxWidth = canvas.width * 0.85;
+        const boxHeight = canvas.height * 0.45;
+        const boxX = canvas.width * 0.075;
+        const boxY = canvas.height * 0.1;
+
+        // Mover botão ✖ para o canto superior direito da caixa
+        closeBtn.style.left = `${boxX + boxWidth - 20}px`;
+        closeBtn.style.top = `${boxY - 20}px`;
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        ctx.fillStyle = "white";
+        ctx.font = "16px sans-serif";
+        ctx.textAlign = "left";
+
+        const words = currentMessage.split(" ");
+        let line = "";
+        let y = boxY + padding + 20;
+        const lineHeight = 22;
+        const maxWidth = boxWidth - 2 * padding;
+
+        for (let n = 0; n < words.length; n++) {
+          const testLine = line + words[n] + " ";
+          const testWidth = ctx.measureText(testLine).width;
+          if (testWidth > maxWidth && n > 0) {
+            ctx.fillText(line, boxX + padding, y);
+            line = words[n] + " ";
+            y += lineHeight;
+          } else {
+            line = testLine;
+          }
+        }
+        ctx.fillText(line, boxX + padding, y);
+      }
+
+      if (currentLetterIndex >= allLetters.length) {
+        portal.visible = true;
+      }
+
+      if (portal.visible) {
+        ctx.drawImage(portalImg, portal.x, portal.y, portal.width, portal.height);
+        if (!messageOpen && checkCollision(player, portal)) {
+          window.location.href = "fase2.html";
+        }
+      }
+
+      requestAnimationFrame(draw);
+    }
+
+    playerImg.onload = draw;
+  </script>
+</body>
+</html>
